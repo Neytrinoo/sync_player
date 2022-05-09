@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	auth_domain "github.com/Neytrinoo/sync_player/auth"
 	"github.com/Neytrinoo/sync_player/domain"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/websocket"
@@ -13,6 +14,7 @@ import (
 
 type Handler struct {
 	userSyncPlayerUseCase domain.UserSyncPlayerUseCase
+	authAgent             auth_domain.AuthAgent
 	redisAddr             string
 }
 
@@ -23,8 +25,10 @@ func NewHandler(usecase domain.UserSyncPlayerUseCase, redisAddr string) *Handler
 	}
 }
 
-func getUserId() uint { // заглушка. потом id user'а будет получаться из микросервиса авторизации
-	return 2
+func (a *Handler) getUserId(c echo.Context) uint {
+	cookie, _ := c.Cookie("session_id")
+	session, _ := a.authAgent.GetSession(cookie.Value)
+	return session.UserId
 }
 
 func getRedisChannelName(userId uint) string {
@@ -76,7 +80,7 @@ func (a *Handler) updateStateMessageProcessing(userId uint, message *domain.User
 
 func (a *Handler) PlayerStateLoop(c echo.Context) error {
 	var upgrader = websocket.Upgrader{}
-	userId := getUserId()
+	userId := a.getUserId(c)
 
 	wsCon, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
