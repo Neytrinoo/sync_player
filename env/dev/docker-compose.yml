@@ -1,0 +1,33 @@
+version: "3.5"
+
+services:
+  web:
+    image: nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ../../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - websock_server
+
+  websock_server:
+    image: mausved/wave_music_api_v1:latest
+    container_name: websock_server
+    working_dir: /server
+    environment:
+      - REDIS_ADDR="redis:6379"
+      - AUTH_GRPC_ADDR="localhost:1488"
+    expose:
+      - 5000
+    entrypoint: ./cmd/run.sh
+    volumes:
+      - ../..:/server
+    depends_on:
+      - redis
+
+  redis:
+    image: redis
+    container_name: redis
+    expose:
+      - 6379
